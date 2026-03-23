@@ -1,16 +1,27 @@
 # 1.仓库介绍
 这是一个AI协助下进行的项目，旨在完成~~AI出的~~Markdown实时预览服务，代码在虚拟机ubuntu20.04下编写，包含python后端服务和HTML/JS前端页面
 
+你可以在终端输入
+```
+git https://github.com/RenewedDefinition/markdown-project.git
+```
+克隆仓库，安装conda后依次输入
+```
+cd markdown-project/ai/
+./start.sh
+```
+或者按照以下步骤运行
+
 # 2.安装conda/miniconda
-你可以在 'https://www.anaconda.com/download' 中找到conda或miniconda下载linux下的安装包，点击下载
+你可以在 `https://www.anaconda.com/download`中找到conda或miniconda下载linux下的安装包，点击下载
 然后在终端输入（这里以miniconda为例）
 ```
 $cd /home/xxx/下载
 $bash Miniconda3-latest-Linux-x86_64.sh
 ```
-然后一直按回车键，出现“Do you accept the license terms”和“Do you wish the installer to initialize Anaconda3 by running condo init?”输入“yes”就安装完成了
+然后一直按回车键，出现`Do you accept the license terms`和`Do you wish the installer to initialize Anaconda3 by running condo init?`输入`yes`就安装完成了
 
-或者你可以在终端输入~~（宇宙免责声明：以下是ai写的，未经尝试，不过应该可以）~~
+或者你可以在终端输入(~~宇宙免责声明：以下是ai写的，未经尝试，不过应该可以~~)
 ```
 wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
 bash Miniconda3-latest-Linux-x86_64.sh
@@ -24,3 +35,19 @@ source ~/.bashrc
 conda create -n md python=3.10 -y
 conda activate md
 ```
+# 4.安装依赖
+在终端输入（经测试这两个就够了）
+```
+pip install fastapi markdown
+```
+
+# 5.运行
+在终端cd到main.py所在文件夹
+```
+cd markdown-project/ai
+```
+然后输入
+```
+python main.py
+```
+即可在`http://0.0.0.0:8000`实现Markdown实时预览

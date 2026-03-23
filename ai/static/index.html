@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8"/>
+    <title>Markdown 实时预览</title>
+    <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/highlight.js/11.7.0/styles/github.min.css"/>
+    <script src="https://cdn.bootcdn.net/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],  // 支持 $公式$ 和 \(公式\)
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],  // 支持 $$公式$$ 和 \[公式\]
+                processEscapes: true  // 处理转义字符
+            },
+            svg: {
+                fontCache: 'global'
+            },
+            startup: {
+                typeset: false  // 禁用自动渲染，手动控制
+            }
+        };
+    </script>
+    <script src="https://cdn.bootcdn.net/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { display: flex; height: 100vh; font-family: system-ui; }
+        #editor, #preview { flex: 1; height: 100%; padding: 20px; overflow-y: auto; }
+        #editor { border-right: 1px solid #eee; font-size: 16px; outline: none; font-family: monospace; }
+        #preview { background: #fafafa; }
+        .MathJax { font-size: 1.1em !important; }
+    </style>
+</head>
+<body>
+<textarea id="editor" placeholder="输入 Markdown...
+示例公式：
+行内公式：$E=mc^2$
+块级公式：$$\int_0^\infty e^{-x^2} dx = \frac{\sqrt{\pi}}{2}$$"></textarea>
+<div id="preview"></div>
+
+<script>
+const editor = document.getElementById('editor');
+const preview = document.getElementById('preview');
+
+// 防抖
+function debounce(fn, delay = 200) {
+    let t;
+    return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), delay); };
+}
+
+const update = debounce(async () => {
+    // 保存当前编辑器滚动位置
+    const editorScrollTop = editor.scrollTop;
+    
+    const res = await fetch('/api/convert', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ markdown: editor.value })
+    });
+    const data = await res.json();
+    preview.innerHTML = data.html;
+    
+    // 1. 代码高亮
+    document.querySelectorAll('pre code').forEach(b => hljs.highlightElement(b));
+    
+    // 2. 手动触发 MathJax 渲染公式
+    if (window.MathJax) {
+        MathJax.typesetClear();  // 清空之前的渲染
+        MathJax.typeset([preview]);  // 只渲染预览区域的公式
+    }
+    
+    // 3. 恢复滚动同步（输入后保持预览区滚动位置与编辑器一致）
+    syncScroll(editor, preview, editorScrollTop);
+});
+
+// 滚动同步函数（增加边界判断 + 仅主动滚动时同步）
+let isScrolling = false;
+function syncScroll(fromEl, toEl, fixedScrollTop = null) {
+    // 防止重复触发
+    if (isScrolling) return;
+    isScrolling = true;
+    
+    try {
+        // 计算滚动比例（处理边界值，避免除以 0）
+        const fromHeight = fromEl.scrollHeight - fromEl.clientHeight;
+        const toHeight = toEl.scrollHeight - toEl.clientHeight;
+        
+        // 如果内容高度小于可视高度，无需滚动
+        if (fromHeight <= 0 || toHeight <= 0) {
+            toEl.scrollTop = 0;
+            return;
+        }
+        
+        // 使用固定值或实时计算滚动位置
+        const scrollTop = fixedScrollTop !== null ? fixedScrollTop : fromEl.scrollTop;
+        const scrollRatio = scrollTop / fromHeight;
+        toEl.scrollTop = scrollRatio * toHeight;
+    } finally {
+        // 释放锁
+        setTimeout(() => { isScrolling = false; }, 50);
+    }
+}
+
+// 绑定事件：仅在主动滚动时同步
+editor.addEventListener('scroll', () => syncScroll(editor, preview));
+preview.addEventListener('scroll', () => syncScroll(preview, editor));
+
+// 输入事件：更新内容 + 同步滚动（保持预览区跟随编辑器）
+editor.addEventListener('input', update);
+
+// 初始化触发一次渲染
+update();
+</script>
+</body>
+</html>
