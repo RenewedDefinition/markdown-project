@@ -1,114 +1,162 @@
+<!-- 声明文档类型为 HTML5 -->
 <!DOCTYPE html>
+<!-- 设置页面语言为简体中文 -->
 <html lang="zh-CN">
 <head>
+    <!-- 设置字符编码为 UTF-8，支持中文、特殊符号 -->
     <meta charset="UTF-8"/>
+    <!-- 浏览器标签页标题 -->
     <title>Markdown 实时预览</title>
+
+    <!-- 引入 highlight.js 代码高亮的 CSS 样式（github 风格） -->
     <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/highlight.js/11.7.0/styles/github.min.css"/>
+    <!-- 引入 highlight.js 核心 JS，用于代码块语法高亮 -->
     <script src="https://cdn.bootcdn.net/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
+
+    <!-- MathJax 配置：用于渲染 LaTeX 数学公式 -->
     <script>
         window.MathJax = {
             tex: {
-                inlineMath: [['$', '$'], ['\\(', '\\)']],  // 支持 $公式$ 和 \(公式\)
-                displayMath: [['$$', '$$'], ['\\[', '\\]']],  // 支持 $$公式$$ 和 \[公式\]
-                processEscapes: true  // 处理转义字符
+                // 行内公式：支持 $E=mc^2$ 和 \(公式\) 两种写法
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                // 块级公式：支持 $$公式$$ 和 \[公式\] 两种写法
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                // 允许转义字符，比如 \$ 可以显示普通 $ 符号
+                processEscapes: true
             },
-            svg: {
-                fontCache: 'global'
-            },
+            // SVG 字体缓存设置，提升渲染性能
+            svg: { fontCache: 'global' },
             startup: {
-                typeset: false  // 禁用自动渲染，手动控制
+                // 禁用自动渲染公式，改为我们手动控制渲染时机
+                typeset: false
             }
         };
     </script>
+
+    <!-- 引入 MathJax 公式渲染库 -->
     <script src="https://cdn.bootcdn.net/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.min.js"></script>
+
+    <!-- 页面样式 CSS -->
     <style>
+        /* 全局样式重置：清除默认内外边距，盒子模型统一为 border-box */
         * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        /* body 布局：弹性布局，高度占满整个屏幕，使用系统默认字体 */
         body { display: flex; height: 100vh; font-family: system-ui; }
+        
+        /* 编辑器 + 预览区通用样式：各占一半宽度，高度满屏，内边距20px，超出内容滚动 */
         #editor, #preview { flex: 1; height: 100%; padding: 20px; overflow-y: auto; }
+        
+        /* 左侧编辑器样式：右侧加分割线，字体大小16px，去掉输入框轮廓，等宽字体 */
         #editor { border-right: 1px solid #eee; font-size: 16px; outline: none; font-family: monospace; }
+        
+        /* 右侧预览区样式：浅灰色背景 */
         #preview { background: #fafafa; }
+        
+        /* 公式样式：强制放大 MathJax 渲染的公式字体 */
         .MathJax { font-size: 1.1em !important; }
     </style>
 </head>
+
 <body>
-<textarea id="editor" placeholder="输入 Markdown...
+    <!-- 左侧输入框：多行文本编辑器，默认提示文字 -->
+    <textarea id="editor" placeholder="输入 Markdown...
 示例公式：
 行内公式：$E=mc^2$
 块级公式：$$\int_0^\infty e^{-x^2} dx = \frac{\sqrt{\pi}}{2}$$"></textarea>
-<div id="preview"></div>
 
-<script>
-const editor = document.getElementById('editor');
-const preview = document.getElementById('preview');
+    <!-- 右侧预览区：用于展示渲染后的 HTML 内容 -->
+    <div id="preview"></div>
 
-// 防抖
-function debounce(fn, delay = 200) {
-    let t;
-    return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), delay); };
-}
+    <script>
+        // 获取 DOM 元素：左侧编辑器
+        const editor = document.getElementById('editor');
+        // 获取 DOM 元素：右侧预览区
+        const preview = document.getElementById('preview');
 
-const update = debounce(async () => {
-    // 保存当前编辑器滚动位置
-    const editorScrollTop = editor.scrollTop;
-    
-    const res = await fetch('/api/convert', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ markdown: editor.value })
-    });
-    const data = await res.json();
-    preview.innerHTML = data.html;
-    
-    // 1. 代码高亮
-    document.querySelectorAll('pre code').forEach(b => hljs.highlightElement(b));
-    
-    // 2. 手动触发 MathJax 渲染公式
-    if (window.MathJax) {
-        MathJax.typesetClear();  // 清空之前的渲染
-        MathJax.typeset([preview]);  // 只渲染预览区域的公式
-    }
-    
-    // 3. 恢复滚动同步（输入后保持预览区滚动位置与编辑器一致）
-    syncScroll(editor, preview, editorScrollTop);
-});
-
-// 滚动同步函数（增加边界判断 + 仅主动滚动时同步）
-let isScrolling = false;
-function syncScroll(fromEl, toEl, fixedScrollTop = null) {
-    // 防止重复触发
-    if (isScrolling) return;
-    isScrolling = true;
-    
-    try {
-        // 计算滚动比例（处理边界值，避免除以 0）
-        const fromHeight = fromEl.scrollHeight - fromEl.clientHeight;
-        const toHeight = toEl.scrollHeight - toEl.clientHeight;
-        
-        // 如果内容高度小于可视高度，无需滚动
-        if (fromHeight <= 0 || toHeight <= 0) {
-            toEl.scrollTop = 0;
-            return;
+        // 防抖函数：防止频繁触发请求，提升性能
+        // fn：要执行的函数 delay：延迟时间（默认200ms）
+        function debounce(fn, delay = 200) {
+            let t; // 定时器 ID
+            // 返回一个新函数，每次调用都会清除旧定时器，重新计时
+            return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), delay); };
         }
-        
-        // 使用固定值或实时计算滚动位置
-        const scrollTop = fixedScrollTop !== null ? fixedScrollTop : fromEl.scrollTop;
-        const scrollRatio = scrollTop / fromHeight;
-        toEl.scrollTop = scrollRatio * toHeight;
-    } finally {
-        // 释放锁
-        setTimeout(() => { isScrolling = false; }, 50);
-    }
-}
 
-// 绑定事件：仅在主动滚动时同步
-editor.addEventListener('scroll', () => syncScroll(editor, preview));
-preview.addEventListener('scroll', () => syncScroll(preview, editor));
+        // 核心更新函数：经过防抖处理，输入停止200ms后才执行
+        const update = debounce(async () => {
+            // 保存编辑器当前滚动条位置，防止渲染后跳动
+            const editorScrollTop = editor.scrollTop;
+            
+            // 向后端接口发送 POST 请求，把 Markdown 文本转换成 HTML
+            const res = await fetch('/api/convert', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                // 把编辑器内容转为 JSON 格式发送
+                body: JSON.stringify({ markdown: editor.value })
+            });
 
-// 输入事件：更新内容 + 同步滚动（保持预览区跟随编辑器）
-editor.addEventListener('input', update);
+            // 解析后端返回的 JSON 数据
+            const data = await res.json();
+            // 把渲染好的 HTML 插入到预览区
+            preview.innerHTML = data.html;
+            
+            // 1. 代码高亮：遍历所有代码块，执行高亮
+            document.querySelectorAll('pre code').forEach(b => hljs.highlightElement(b));
+            
+            // 2. 公式渲染：如果 MathJax 加载成功
+            if (window.MathJax) {
+                MathJax.typesetClear();  // 清空上一次的公式渲染结果
+                MathJax.typeset([preview]);  // 只渲染预览区内的公式
+            }
+            
+            // 3. 同步左右两侧滚动条位置
+            syncScroll(editor, preview, editorScrollTop);
+        });
 
-// 初始化触发一次渲染
-update();
-</script>
+        // 滚动同步控制变量：防止滚动事件重复触发（锁）
+        let isScrolling = false;
+
+        // 滚动同步函数：让编辑器和预览区滚动位置保持一致
+        // fromEl：滚动源元素 toEl：同步目标元素 fixedScrollTop：固定滚动值（可选）
+        function syncScroll(fromEl, toEl, fixedScrollTop = null) {
+            // 如果正在滚动中，直接返回，不重复执行
+            if (isScrolling) return;
+            isScrolling = true; // 加锁
+            
+            try {
+                // 计算 源元素 可滚动总高度 = 内容总高度 - 可视区域高度
+                const fromHeight = fromEl.scrollHeight - fromEl.clientHeight;
+                // 计算 目标元素 可滚动总高度
+                const toHeight = toEl.scrollHeight - toEl.clientHeight;
+                
+                // 如果内容高度小于可视高度，无需滚动，直接置顶
+                if (fromHeight <= 0 || toHeight <= 0) {
+                    toEl.scrollTop = 0;
+                    return;
+                }
+                
+                // 使用固定值 或 当前实时滚动位置
+                const scrollTop = fixedScrollTop !== null ? fixedScrollTop : fromEl.scrollTop;
+                // 计算滚动比例
+                const scrollRatio = scrollTop / fromHeight;
+                // 按比例设置目标元素滚动位置
+                toEl.scrollTop = scrollRatio * toHeight;
+            } finally {
+                // 50ms 后解锁，允许下一次滚动同步
+                setTimeout(() => { isScrolling = false; }, 50);
+            }
+        }
+
+        // 绑定事件：编辑器滚动时，同步滚动预览区
+        editor.addEventListener('scroll', () => syncScroll(editor, preview));
+        // 绑定事件：预览区滚动时，同步滚动编辑器
+        preview.addEventListener('scroll', () => syncScroll(preview, editor));
+
+        // 绑定事件：编辑器内容变化时，执行更新渲染
+        editor.addEventListener('input', update);
+
+        // 页面初始化：默认执行一次渲染，展示默认内容
+        update();
+    </script>
 </body>
 </html>

@@ -9,4 +9,7 @@
 
 ~~遇到的难题基本是ai解决的qwq，比如简单的语法问题~~
 
+# day 6
+基本了解html，进行一些尝试(~~不过不太成功~~)
+
 [附目前进度](https://www.cnblogs.com/windymoon/p/19760599)
