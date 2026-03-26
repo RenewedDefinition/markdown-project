@@ -13,6 +13,6 @@
 基本了解html，进行一些尝试(~~不过不太成功~~)
 
 # day 6
-完成html基本语法规则的学，对javascript进行初步的了解（~~如果学的快就重构一边md.html……~~）
+完成html基本语法规则的学，对javascript进行初步的了解（~~如果学的快就重构一遍md.html……~~）
 
 [附目前进度](https://www.cnblogs.com/windymoon/p/19760599)
