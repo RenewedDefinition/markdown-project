@@ -15,4 +15,7 @@
 # day 6
 完成html基本语法规则的学，对javascript进行初步的了解（~~如果学的快就重构一遍md.html……~~）
 
+# day 7
+完成javascript基本语法规则的学，较个性化的函数仍需要查表
+
 [附目前进度](https://www.cnblogs.com/windymoon/p/19760599)
